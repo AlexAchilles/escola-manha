@@ -7,152 +7,46 @@ use PDO;
 use PDOException;
 
 class User {
-
-    private $id;
+    private $id_user;
+    private $cpf;
     private $name;
     private $email;
-    private $password;
-    private $photo;
-    private $address; // Atributo novo
-    private $message;
+    private $number;
+    private $id_house;
 
     public function __construct (
+        $cpf = null,
         $name = null,
         $email = null,
-        $password = null,
-        Address $address = null // Parametro novo
+        $number = null,
+        $id_house = null
+    
     ){
+        $this->cpf = $cpf;
         $this->name = $name;
         $this->email = $email;
-        $this->password = $password;
-        $this->address = $address; // Atribuição nova
-    }
+        $this->number = $number;
+        $this->id_house = $id_house;
 
-    /**
-     * @return mixed
-     */
-    public function getId()
-    {
-        return $this->id;
     }
-
-    /**
-     * @param mixed $id
-     */
-    public function setId($id): void
-    {
-        $this->id = $id;
-    }
-
-    public function getName()
-    {
-        return $this->name;
-    }
-
-    public function setName($name): void
-    {
-        $this->name = $name;
-    }
-
-    public function getEmail()
-    {
-        return $this->email;
-    }
-
-    public function setEmail($email): void
-    {
-        $this->email = $email;
-    }
-
-    public function getPassword(): mixed
-    {
-        return $this->password;
-    }
-
-    public function setPassword(mixed $password): void
-    {
-        $this->password = $password;
-    }
-
-    public function getMessage(): string
-    {
-        return $this->message;
-    }
-
-    public function getPhoto(): ?string
-    {
-        return $this->photo;
-    }
-
-    public function setPhoto(string $photo): void
-    {
-        $this->photo = $photo;
-    }
-
-    public function findById (int $id) : User
-    {
-        $query = "SELECT * FROM users WHERE id = :id";
-        $stmt = Connect::getInstance()->prepare($query);
-        $stmt->bindParam(":id",$id);
-        try {
-            $stmt->execute();
-            if($stmt->rowCount()){
-                $user = $stmt->fetch();
-                $this->id = $user->id;
-                $this->name = $user->name;
-                $this->email = $user->email;
-                $this->photo = $user->photo;
-                $this->password = $user->password;
-                return $this;
-            }
-            $this->message = "Usuário não encontrado!";
-            return $this;
-        } catch (PDOException $e) {
-            $this->message = "Erro: {$e->getMessage()}";
-            return $this;
-        }
-    }
-
-    public function findByEmail (string $email) : bool
-    {
-        $query = "SELECT * FROM users WHERE email = :email";
-        $stmt = Connect::getInstance()->prepare($query);
-        $stmt->bindParam(":email",$email);
-        try {
-            $stmt->execute();
-            if($stmt->rowCount()){
-                $user = $stmt->fetch();
-                $this->id = $user->id;
-                $this->name = $user->name;
-                $this->email = $user->email;
-                return true;
-            }
-            $this->message = "Usuário não encontrado!";
-            return false;
-        } catch (PDOException $e) {
-            $this->message = "Erro: {$e->getMessage()}";
-            return false;
-        }
-    }
-
+    
     public function insert () : bool
     {
         if($this->findByEmail($this->email)){
             $this->message = "E-mail já cadastrado!";
             return false;
         }
-
-        $query = "INSERT INTO users VALUES (NULL,:name,:email,:password)";
+        $query = "INSERT INTO users VALUES (:cpf, :name, :email, :number, :id_house)";
         $stmt = Connect::getInstance()->prepare($query);
+        $stmt->bindParam(":cpf", $this->cpf);
         $stmt->bindParam(":name", $this->name);
         $stmt->bindParam(":email", $this->email);
-        $this->password = password_hash($this->password, PASSWORD_DEFAULT);
-        $stmt->bindParam(":password",$this->password);
+        $stmt->bindParam(":number", $this->number);
+        $stmt->bindParam(":id_house", $this->id_house);
         try {
             $stmt->execute();
             if($stmt->rowCount()){
-                $this->id = Connect::getInstance()->lastInsertId();
-                $this->message = "Usuário cadastrado com sucesso!";
+                $this->message = "Usuário inserido com sucesso!";
                 return true;
             }
             $this->message = "Erro ao inserir usuário, verifique os dados!";
@@ -162,46 +56,86 @@ class User {
             return false;
         }
     }
-
-    public function auth (string $email, string $password) : bool
+    
+    public function selectAllUsers()
     {
-        $query = "SELECT * 
-                  FROM users 
-                  WHERE email LIKE :email";
-
-        $stmt = Connect::getInstance()->prepare($query);
-        $stmt->bindParam(":email", $email);
-        $stmt->execute();
-
-        if($stmt->rowCount() == 0) {
-            $this->message = "Usuário não encontrado!";
-            return false;
-        }
-
-        $user = $stmt->fetch();
-
-        if(!password_verify($password, $user->password)) {
-            $this->message = "Senha incorreta!";
-            return false;
-        }
-
-        $this->id = $user->id;
-        $this->name = $user->name;
-        $this->email = $user->email;
-        $this->photo = $user->photo;
-        $this->message = "Usuário autenticado com sucesso!";
-        return true;
-
+        $query = "SELECT * FROM users;";
+        $stmt = Connect::getInstance()->query($query);
+        return $stmt->fetchAll();
     }
 
-    public function uploadPhoto(string $photo) : bool
+    public function selectUsersHouse()
     {
-        $query = "UPDATE users SET photo = :photo WHERE id = :id";
-        $stmt = Connect::getInstance()->prepare($query);
-        $stmt->bindParam(":photo",$photo);
-        $stmt->bindParam(":id",$this->id);
-        $stmt->execute();
-        return true;
+        $query= "SELECT * FROM users_houses 
+        JOIN users ON users.id_user = users_addresses.id_users
+        JOIN address ON address.id_house = users_houses.id_houses;"
+        $stmt = Connect::getInstance()->query($query);
+        return $stmt->fetchAll();
     }
 
+    public function getId()
+    {
+    return $this->id;
+    }
+
+    public function setId($id_user): void
+    {
+        $this->id = $id_user;
+    }
+    
+    public function getCpf()
+    {
+        return $this->cpf;
+    }
+    
+    public function setCpf($cpf): void
+    {
+        $this->cpf = $cpf;
+    }
+    
+    
+    public function getName()
+    {
+        return $this->name;
+    }
+    
+    public function setName($name): void
+    {
+        $this->name = $name;
+    }
+    
+    public function getEmail()
+    {
+        return $this->email;
+    }
+    
+    public function setEmail($email): void
+    {
+        $this->email = $email;
+    }
+    
+    public function getNumber()
+    {
+        return $this->number;
+    }
+    
+    public function setNumber($number): void
+    {
+        $this->number = $number;
+    }
+    
+    public function getIdHouse()
+    {
+        return $this->id_house;
+    }
+    
+    public function setIdHouse($id_house): void
+    {
+        $this->id_$id_house = $id_house;
+    }
+    
+    public function getMessage(): string
+    {
+        return $this->message;
+    }
 }
